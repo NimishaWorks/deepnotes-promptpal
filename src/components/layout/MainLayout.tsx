@@ -5,7 +5,7 @@ import { InsightsPanel } from "./InsightsPanel";
 import { Header } from "./Header";
 
 export const MainLayout = () => {
-  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
+  const [selectedFileIds, setSelectedFileIds] = useState<string[]>([]);
   const [uploadedFiles, setUploadedFiles] = useState<any[]>([]);
 
   return (
@@ -17,20 +17,20 @@ export const MainLayout = () => {
         <div className="w-80 border-r border-border bg-card/50 backdrop-blur-sm">
           <SourcesPanel 
             files={uploadedFiles}
-            onFileSelect={setSelectedFileId}
-            selectedFileId={selectedFileId}
+            selectedFileIds={selectedFileIds}
+            onFileSelectionChange={setSelectedFileIds}
             onFilesUpload={setUploadedFiles}
           />
         </div>
 
         {/* Chat Panel - Center */}
         <div className="flex-1 flex flex-col min-w-0">
-          <ChatPanel selectedFileId={selectedFileId} />
+          <ChatPanel selectedFileIds={selectedFileIds} />
         </div>
 
         {/* Insights Panel - Right Sidebar */}
         <div className="w-80 border-l border-border bg-card/50 backdrop-blur-sm">
-          <InsightsPanel selectedFileId={selectedFileId} />
+          <InsightsPanel selectedFileIds={selectedFileIds} />
         </div>
       </div>
     </div>

@@ -19,10 +19,10 @@ interface ChatMessage {
 }
 
 interface ChatPanelProps {
-  selectedFileId: string | null;
+  selectedFileIds: string[];
 }
 
-export const ChatPanel = ({ selectedFileId }: ChatPanelProps) => {
+export const ChatPanel = ({ selectedFileIds }: ChatPanelProps) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -38,6 +38,7 @@ export const ChatPanel = ({ selectedFileId }: ChatPanelProps) => {
 
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return;
+    if (selectedFileIds.length === 0) return;
 
     const userMessage: ChatMessage = {
       id: `msg-${Date.now()}`,
@@ -55,14 +56,15 @@ export const ChatPanel = ({ selectedFileId }: ChatPanelProps) => {
       const aiMessage: ChatMessage = {
         id: `msg-${Date.now()}-ai`,
         type: 'ai',
-        content: selectedFileId 
-          ? `Based on the uploaded document, here's what I found regarding "${inputValue}". The document contains relevant information that directly addresses your question with specific details and context.`
-          : "I'd be happy to help you analyze documents! Please upload a PDF, Word document, or email file first, then ask me anything about its content.",
-        citations: selectedFileId ? [
+        content: selectedFileIds.length > 0
+          ? `Based on the ${selectedFileIds.length} selected document${selectedFileIds.length > 1 ? 's' : ''}, here's what I found regarding "${inputValue}". The analysis combines information from multiple sources to provide a comprehensive answer with specific details and context.`
+          : "I'd be happy to help you analyze documents! Please select at least one document from the Sources panel, then ask me anything about its content.",
+        citations: selectedFileIds.length > 0 ? [
           { text: "Section 2.1", source: "Document Analysis", page: 15 },
-          { text: "Executive Summary", source: "Key Findings", page: 3 }
+          { text: "Executive Summary", source: "Key Findings", page: 3 },
+          ...(selectedFileIds.length > 1 ? [{ text: "Appendix B", source: "Secondary Document", page: 8 }] : [])
         ] : undefined,
-        confidence: selectedFileId ? 'high' : undefined,
+        confidence: selectedFileIds.length > 0 ? 'high' : undefined,
         timestamp: new Date()
       };
       
@@ -88,9 +90,9 @@ export const ChatPanel = ({ selectedFileId }: ChatPanelProps) => {
           <div>
             <h2 className="text-lg font-semibold text-foreground">Chat with DeepNotes</h2>
             <p className="text-sm text-muted-foreground">
-              {selectedFileId 
-                ? "Ask questions about your uploaded document"
-                : "Upload a document to start asking questions"
+              {selectedFileIds.length > 0
+                ? `Ask questions about your ${selectedFileIds.length} selected document${selectedFileIds.length > 1 ? 's' : ''}`
+                : "Select documents from the Sources panel to start asking questions"
               }
             </p>
           </div>
@@ -219,8 +221,9 @@ export const ChatPanel = ({ selectedFileId }: ChatPanelProps) => {
           />
           <Button 
             onClick={handleSendMessage}
-            disabled={!inputValue.trim() || isLoading}
-            className="h-12 px-6 gradient-primary text-white shadow-medium hover:shadow-glow transition-bounce"
+            disabled={!inputValue.trim() || isLoading || selectedFileIds.length === 0}
+            className="h-12 px-6 gradient-primary text-white shadow-medium hover:shadow-glow transition-bounce disabled:opacity-50"
+            title={selectedFileIds.length === 0 ? "Select at least one document first" : ""}
           >
             <Send className="w-4 h-4" />
           </Button>

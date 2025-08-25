@@ -7,10 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 interface InsightsPanelProps {
-  selectedFileId: string | null;
+  selectedFileIds: string[];
 }
 
-export const InsightsPanel = ({ selectedFileId }: InsightsPanelProps) => {
+export const InsightsPanel = ({ selectedFileIds }: InsightsPanelProps) => {
   const [activeTab, setActiveTab] = useState("highlights");
 
   const mockHighlights = [
@@ -71,20 +71,23 @@ export const InsightsPanel = ({ selectedFileId }: InsightsPanelProps) => {
           Insights
         </h2>
         <p className="text-sm text-muted-foreground mt-1">
-          AI-generated analysis and key findings
+          {selectedFileIds.length > 0 
+            ? `Analysis from ${selectedFileIds.length} selected document${selectedFileIds.length > 1 ? 's' : ''}`
+            : "AI-generated analysis and key findings"
+          }
         </p>
       </div>
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
-        {!selectedFileId ? (
+        {selectedFileIds.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-6">
             <div className="w-16 h-16 rounded-full bg-accent/20 flex items-center justify-center mb-4">
               <Eye className="w-8 h-8 text-accent-foreground" />
             </div>
-            <p className="text-sm text-muted-foreground mb-2">No document selected</p>
+            <p className="text-sm text-muted-foreground mb-2">No documents selected</p>
             <p className="text-xs text-muted-foreground/70">
-              Select a document to see insights and analysis
+              Select documents from the Sources panel to see insights and analysis
             </p>
           </div>
         ) : (

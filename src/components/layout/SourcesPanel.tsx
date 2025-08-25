@@ -1,6 +1,7 @@
 import { useState, useCallback } from "react";
-import { FileText, FilePlus2, Upload, Calendar, File, Link } from "lucide-react";
+import { FileText, FilePlus2, Upload, Calendar, File, Link, CheckSquare, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
 import { LinkUploadModal } from "./LinkUploadModal";
 
@@ -14,15 +15,15 @@ interface FileItem {
 
 interface SourcesPanelProps {
   files: FileItem[];
-  onFileSelect: (fileId: string | null) => void;
-  selectedFileId: string | null;
+  selectedFileIds: string[];
+  onFileSelectionChange: (fileIds: string[]) => void;
   onFilesUpload: (files: FileItem[]) => void;
 }
 
 export const SourcesPanel = ({ 
   files, 
-  onFileSelect, 
-  selectedFileId, 
+  selectedFileIds,
+  onFileSelectionChange,
   onFilesUpload 
 }: SourcesPanelProps) => {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -128,6 +129,22 @@ export const SourcesPanel = ({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
+  const handleSelectAll = useCallback(() => {
+    if (selectedFileIds.length === files.length) {
+      onFileSelectionChange([]);
+    } else {
+      onFileSelectionChange(files.map(file => file.id));
+    }
+  }, [files, selectedFileIds, onFileSelectionChange]);
+
+  const handleFileToggle = useCallback((fileId: string) => {
+    if (selectedFileIds.includes(fileId)) {
+      onFileSelectionChange(selectedFileIds.filter(id => id !== fileId));
+    } else {
+      onFileSelectionChange([...selectedFileIds, fileId]);
+    }
+  }, [selectedFileIds, onFileSelectionChange]);
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -136,9 +153,31 @@ export const SourcesPanel = ({
           <FileText className="w-5 h-5 text-primary" />
           Sources
         </h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          {files.length} document{files.length !== 1 ? 's' : ''} uploaded
-        </p>
+        <div className="flex items-center justify-between mt-2">
+          <p className="text-sm text-muted-foreground">
+            {files.length} document{files.length !== 1 ? 's' : ''} uploaded
+          </p>
+          {files.length > 0 && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSelectAll}
+              className="text-xs h-6 px-2 text-primary hover:text-primary"
+            >
+              {selectedFileIds.length === files.length ? (
+                <>
+                  <CheckSquare className="w-3 h-3 mr-1" />
+                  Deselect All
+                </>
+              ) : (
+                <>
+                  <Square className="w-3 h-3 mr-1" />
+                  Select All
+                </>
+              )}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Upload Area - Top */}
@@ -231,17 +270,21 @@ export const SourcesPanel = ({
         ) : (
           <div className="space-y-2">
             {files.map((file) => (
-              <button
+              <div
                 key={file.id}
-                onClick={() => onFileSelect(file.id === selectedFileId ? null : file.id)}
                 className={cn(
-                  "w-full p-3 rounded-lg text-left transition-smooth hover:bg-accent/50 border",
-                  selectedFileId === file.id
+                  "w-full p-3 rounded-lg transition-smooth border hover:bg-accent/50",
+                  selectedFileIds.includes(file.id)
                     ? "bg-primary/10 border-primary/30 shadow-soft"
                     : "bg-card border-border/30"
                 )}
               >
                 <div className="flex items-start gap-3">
+                  <Checkbox
+                    checked={selectedFileIds.includes(file.id)}
+                    onCheckedChange={() => handleFileToggle(file.id)}
+                    className="mt-0.5"
+                  />
                   {getFileIcon(file.type)}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">
@@ -258,7 +301,7 @@ export const SourcesPanel = ({
                     </p>
                   </div>
                 </div>
-              </button>
+              </div>
             ))}
           </div>
         )}
