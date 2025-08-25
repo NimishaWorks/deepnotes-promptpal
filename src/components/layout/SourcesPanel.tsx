@@ -1,7 +1,8 @@
 import { useState, useCallback } from "react";
-import { FileText, FilePlus2, Upload, Calendar, File } from "lucide-react";
+import { FileText, FilePlus2, Upload, Calendar, File, Link } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { LinkUploadModal } from "./LinkUploadModal";
 
 interface FileItem {
   id: string;
@@ -25,6 +26,9 @@ export const SourcesPanel = ({
   onFilesUpload 
 }: SourcesPanelProps) => {
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isLinkModalOpen, setIsLinkModalOpen] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [isUploading, setIsUploading] = useState(false);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -36,21 +40,72 @@ export const SourcesPanel = ({
     setIsDragOver(false);
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  const handleDrop = useCallback(async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragOver(false);
     
     const droppedFiles = Array.from(e.dataTransfer.files);
-    const newFiles: FileItem[] = droppedFiles.map((file, index) => ({
-      id: `file-${Date.now()}-${index}`,
-      name: file.name,
-      type: file.name.endsWith('.pdf') ? 'pdf' : file.name.endsWith('.docx') ? 'docx' : 'email',
-      uploadDate: new Date(),
-      size: file.size
-    }));
-    
-    onFilesUpload([...files, ...newFiles]);
+    await handleFileUpload(droppedFiles);
   }, [files, onFilesUpload]);
+
+  const handleFileUpload = async (fileList: File[]) => {
+    setIsUploading(true);
+    setUploadProgress(0);
+    
+    // Simulate upload progress
+    const progressInterval = setInterval(() => {
+      setUploadProgress(prev => {
+        if (prev >= 90) {
+          clearInterval(progressInterval);
+          return 90;
+        }
+        return prev + 10;
+      });
+    }, 200);
+
+    try {
+      const newFiles: FileItem[] = fileList.map((file, index) => ({
+        id: `file-${Date.now()}-${index}`,
+        name: file.name,
+        type: file.name.endsWith('.pdf') ? 'pdf' : file.name.endsWith('.docx') ? 'docx' : 'email',
+        uploadDate: new Date(),
+        size: file.size
+      }));
+      
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+      setUploadProgress(100);
+      
+      setTimeout(() => {
+        onFilesUpload([...files, ...newFiles]);
+        setIsUploading(false);
+        setUploadProgress(0);
+      }, 500);
+    } catch (error) {
+      setIsUploading(false);
+      setUploadProgress(0);
+      console.error("Upload failed:", error);
+    }
+  };
+
+  const handleLinkUpload = async (url: string) => {
+    const fileName = url.split('/').pop() || 'Document from link';
+    const newFile: FileItem = {
+      id: `link-${Date.now()}`,
+      name: fileName,
+      type: 'pdf', // Default type for links
+      uploadDate: new Date(),
+      size: 0 // Unknown size for links
+    };
+    
+    onFilesUpload([...files, newFile]);
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fileList = e.target.files;
+    if (fileList && fileList.length > 0) {
+      handleFileUpload(Array.from(fileList));
+    }
+  };
 
   const getFileIcon = (type: string) => {
     switch (type) {
@@ -84,6 +139,81 @@ export const SourcesPanel = ({
         <p className="text-sm text-muted-foreground mt-1">
           {files.length} document{files.length !== 1 ? 's' : ''} uploaded
         </p>
+      </div>
+
+      {/* Upload Area - Top */}
+      <div 
+        className={cn(
+          "p-4 border-b border-border/30",
+          isDragOver && "bg-primary/5"
+        )}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        <div className="space-y-3">
+          {/* Main Upload Button */}
+          <div className="relative">
+            <input
+              type="file"
+              id="file-upload"
+              className="hidden"
+              multiple
+              accept=".pdf,.docx,.doc,.eml"
+              onChange={handleFileInputChange}
+            />
+            <label htmlFor="file-upload">
+              <Button 
+                className={cn(
+                  "w-full h-12 gradient-primary text-white font-medium shadow-medium hover:shadow-glow transition-bounce relative overflow-hidden group cursor-pointer",
+                  isDragOver && "scale-105 shadow-glow"
+                )}
+                asChild
+              >
+                <div>
+                  <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                  <FilePlus2 className="w-5 h-5 mr-2" />
+                  {isDragOver ? "Drop files here" : "Add Source"}
+                </div>
+              </Button>
+            </label>
+          </div>
+
+          {/* Link Upload Button */}
+          <Button
+            variant="outline"
+            className="w-full h-10 border-border/50 hover:bg-accent/50 transition-smooth"
+            onClick={() => setIsLinkModalOpen(true)}
+          >
+            <Link className="w-4 h-4 mr-2" />
+            Upload via Link
+          </Button>
+
+          {/* Upload Progress */}
+          {isUploading && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">Uploading...</span>
+                <span className="text-primary font-medium">{uploadProgress}%</span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-2">
+                <div 
+                  className="bg-primary h-2 rounded-full transition-all duration-300"
+                  style={{ width: `${uploadProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {isDragOver && (
+          <div className="absolute inset-0 border-2 border-dashed border-primary/50 rounded-lg bg-primary/5 flex items-center justify-center">
+            <div className="flex flex-col items-center text-primary">
+              <Upload className="w-8 h-8 mb-2 animate-bounce" />
+              <p className="text-sm font-medium">Drop your documents here</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Files List */}
@@ -134,36 +264,12 @@ export const SourcesPanel = ({
         )}
       </div>
 
-      {/* Add Source Button - Sticky at Bottom */}
-      <div 
-        className={cn(
-          "p-4 border-t border-border/50 bg-card/80 backdrop-blur-sm",
-          isDragOver && "bg-primary/5"
-        )}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-      >
-        <Button 
-          className={cn(
-            "w-full h-12 gradient-primary text-white font-medium shadow-medium hover:shadow-glow transition-bounce relative overflow-hidden group",
-            isDragOver && "scale-105 shadow-glow"
-          )}
-        >
-          <div className="absolute inset-0 bg-white/20 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-          <FilePlus2 className="w-5 h-5 mr-2" />
-          {isDragOver ? "Drop files here" : "Add Source"}
-        </Button>
-        
-        {isDragOver && (
-          <div className="absolute inset-0 border-2 border-dashed border-primary/50 rounded-lg bg-primary/5 flex items-center justify-center">
-            <div className="flex flex-col items-center text-primary">
-              <Upload className="w-8 h-8 mb-2 animate-bounce" />
-              <p className="text-sm font-medium">Drop your documents here</p>
-            </div>
-          </div>
-        )}
-      </div>
+      {/* Link Upload Modal */}
+      <LinkUploadModal
+        isOpen={isLinkModalOpen}
+        onClose={() => setIsLinkModalOpen(false)}
+        onUpload={handleLinkUpload}
+      />
     </div>
   );
 };
